@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iPhone Mirror</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Segoe UI', 'Inter', sans-serif;
+      background: #0f0f1e;
+      color: #e0e0e0;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .header h1 span {
+      color: #8888aa;
+      font-weight: 400;
+      font-size: 13px;
+      margin-left: 8px;
+    }
+    
+    .status-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .status-badge.idle {
+      background: rgba(255,255,255,0.05);
+      color: #888;
+    }
+    
+    .status-badge.running {
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+    }
+    
+    .status-badge.stopped {
+      background: rgba(244, 67, 54, 0.15);
+      color: #f44336;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .status-badge.idle .status-dot { background: #666; }
+    .status-badge.running .status-dot { background: #4caf50; animation: pulse 2s infinite; }
+    .status-badge.stopped .status-dot { background: #f44336; }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(76,175,80,0.4); }
+      50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(76,175,80,0); }
+    }
+    
+    /* Main content */
+    .main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    
+    /* Control panel */
+    .panel {
+      width: 340px;
+      background: rgba(255,255,255,0.02);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      padding: 24px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    
+    .panel h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #aaaacc;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    
+    .input-group {
+      margin-bottom: 20px;
+    }
+    
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      color: #8888aa;
+      margin-bottom: 6px;
+    }
+    
+    .input-group input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .input-group input[type="text"]:focus {
+      border-color: #667eea;
+    }
+    
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    
+    .checkbox-item input {
+      width: 18px;
+      height: 18px;
+      accent-color: #667eea;
+      cursor: pointer;
+    }
+    
+    .checkbox-item span {
+      font-size: 14px;
+      color: #ccc;
+    }
+    
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .btn-start {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+    }
+    
+    .btn-start:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+    }
+    
+    .btn-stop {
+      background: rgba(244,67,54,0.15);
+      color: #f44336;
+      border: 1px solid rgba(244,67,54,0.3);
+    }
+    
+    .btn-stop:hover {
+      background: rgba(244,67,54,0.25);
+    }
+    
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .btn-guide {
+      background: rgba(255,255,255,0.05);
+      color: #aaa;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    
+    .btn-guide:hover {
+      background: rgba(255,255,255,0.1);
+    }
+    
+    /* Info card */
+    .info-card {
+      background: rgba(102,126,234,0.08);
+      border: 1px solid rgba(102,126,234,0.2);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .info-card h3 {
+      font-size: 13px;
+      color: #667eea;
+      margin-bottom: 8px;
+    }
+    
+    .info-card p {
+      font-size: 13px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+    
+    .info-card .ip-display {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
+    
+
+    /* Device presentation area */
+    .viewer-container {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 420px;
+      gap: 22px;
+      padding: 24px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 30% 10%, rgba(102,126,234,0.18), transparent 35%),
+        radial-gradient(circle at 80% 70%, rgba(118,75,162,0.14), transparent 38%),
+        #0b0b17;
+    }
+
+    .stage {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 26px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.35);
+      overflow: hidden;
+    }
+
+    .stage::before {
+      content: '';
+      position: absolute;
+      inset: 20px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.08));
+      filter: blur(28px);
+    }
+
+    .device-frame {
+      position: relative;
+      width: min(36vh, 310px);
+      aspect-ratio: 9 / 19.5;
+      border-radius: 48px;
+      padding: 12px;
+      background: linear-gradient(145deg, #333746, #05060b 55%, #4c5268);
+      box-shadow:
+        0 28px 80px rgba(0,0,0,0.65),
+        inset 0 0 0 1px rgba(255,255,255,0.14),
+        inset 0 0 24px rgba(255,255,255,0.04);
+      z-index: 1;
+    }
+
+    .device-frame.ipad {
+      width: min(58vh, 520px);
+      aspect-ratio: 4 / 3;
+      border-radius: 34px;
+      padding: 14px;
+    }
+
+    .device-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 38px;
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.08), transparent 16%),
+        radial-gradient(circle at 70% 15%, rgba(102,126,234,0.45), transparent 28%),
+        linear-gradient(160deg, #111827, #1d1233 45%, #0ea5e9 120%);
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .device-frame.ipad .device-screen { border-radius: 24px; }
+
+    .notch {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 86px;
+      height: 24px;
+      border-radius: 0 0 18px 18px;
+      background: #05060b;
+      z-index: 2;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.45);
+    }
+
+    .device-frame.ipad .notch {
+      width: 10px;
+      height: 10px;
+      top: 8px;
+      border-radius: 50%;
+      background: #0a0b11;
+    }
+
+    .screen-content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .screen-content .phone-icon {
+      font-size: 54px;
+      filter: drop-shadow(0 10px 22px rgba(0,0,0,0.35));
+    }
+
+    .screen-content h3 {
+      font-size: 18px;
+      line-height: 1.35;
+      color: #fff;
+    }
+
+    .screen-content p {
+      color: rgba(255,255,255,0.68);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .stage-actions {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      gap: 8px;
+      z-index: 3;
+    }
+
+    .mini-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: #d8d8ff;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+
+    .mini-btn.active,
+    .mini-btn:hover {
+      background: rgba(102,126,234,0.28);
+      border-color: rgba(102,126,234,0.55);
+      color: #fff;
+    }
+
+    .side-stack {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .presentation-note {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      color: #b9b9d6;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .presentation-note strong { color: #fff; }
+
+    @media (max-width: 980px) {
+      .viewer-container { grid-template-columns: 1fr; }
+      .side-stack { min-height: 260px; }
+      .panel { width: 300px; }
+    }
+
+    /* Log area */
+    .log-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow: hidden;
+    }
+    
+    .log-container h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #aaaacc;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+    
+    .log-box {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-y: auto;
+      font-family: 'Cascadia Code', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    
+    .log-line {
+      margin-bottom: 4px;
+      word-break: break-word;
+    }
+    
+    .log-line.stdout { color: #aaa; }
+    .log-line.stderr { color: #ff8888; }
+    .log-line .time { color: #555; margin-right: 8px; }
+    
+    .log-box::-webkit-scrollbar { width: 6px; }
+    .log-box::-webkit-scrollbar-track { background: transparent; }
+    .log-box::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    
+    /* Waiting screen overlay */
+    .waiting-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15,15,30,0.95);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      z-index: 100;
+    }
+    
+    .waiting-overlay.show { display: flex; }
+    
+    .waiting-overlay .airplay-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    .waiting-overlay p {
+      font-size: 18px;
+      color: #ccc;
+    }
+    
+    .waiting-overlay .hint {
+      font-size: 14px;
+      color: #666;
+      margin-top: -10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">📱</div>
+      <h1>iPhone Mirror <span>AirPlay Receiver</span></h1>
+    </div>
+    <div class="status-badge idle" id="statusBadge">
+      <div class="status-dot"></div>
+      <span id="statusText">Chưa khởi động</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Control Panel -->
+    <div class="panel">
+      <h2>⚙️ Cấu hình</h2>
+      
+      <div class="input-group">
+        <label>Tên AirPlay</label>
+        <input type="text" id="serverName" value="iPhone Mirror" placeholder="Tên hiển thị">
+      </div>
+      
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="noAudio" checked>
+          <span>Tối ưu mirror (không đồng bộ âm thanh)</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="fullscreen">
+          <span>Toàn màn hình</span>
+        </label>
+      </div>
+      
+      <button class="btn btn-start" id="btnStart">
+        ▶️ Khởi động AirPlay
+      </button>
+      
+      <button class="btn btn-stop" id="btnStop" style="display:none;">
+        ⏹️ Dừng
+      </button>
+      
+      <button class="btn btn-guide" id="btnGuide">
+        📖 Hướng dẫn cách AirPlay
+      </button>
+      
+      <div class="info-card" id="infoCard" style="display:none;">
+        <h3>📡 Địa chỉ IP</h3>
+        <p>Học viên kết nối cùng Wi-Fi, bấm AirPlay trên iPhone và chọn:</p>
+        <div class="ip-display" id="ipDisplay">--</div>
+      </div>
+    </div>
+
+    <!-- Viewer + Log -->
+    <div class="viewer-container">
+      <div class="stage">
+        <div class="stage-actions">
+          <button class="mini-btn active" id="btnPhoneFrame">iPhone</button>
+          <button class="mini-btn" id="btnIpadFrame">iPad</button>
+        </div>
+        <div class="device-frame" id="deviceFrame">
+          <div class="device-screen">
+            <div class="notch"></div>
+            <div class="screen-content">
+              <div class="phone-icon">📱</div>
+              <h3>Khung trình chiếu bo góc kiểu thiết bị thật</h3>
+              <p>Khi iPhone kết nối AirPlay, cửa sổ mirror của UxPlay sẽ mở riêng. Kéo cửa sổ mirror đặt lên vùng này khi quay bài để có bố cục đẹp hơn.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side-stack">
+        <div class="presentation-note">
+          <strong>Mẹo quay đẹp:</strong> chọn iPhone/iPad ở trên, bật AirPlay, rồi kéo cửa sổ mirror đặt lên giữa khung. Bản nâng cấp sâu tiếp theo sẽ embed video live vào khung này để tự bo góc hoàn toàn.
+        </div>
+        <div class="log-container">
+          <h2>📋 Nhật ký</h2>
+          <div class="log-box" id="logBox">
+            <div class="log-line stdout"><span class="time">--:--:--</span>Chưa có log. Bấm "Khởi động AirPlay" để bắt đầu.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Waiting overlay -->
+  <div class="waiting-overlay" id="waitingOverlay">
+    <div class="airplay-icon">📡</div>
+    <p>Đang chờ iPhone kết nối AirPlay...</p>
+    <p class="hint">Mở Control Center trên iPhone → bấm AirPlay → chọn tên server</p>
+  </div>
+
+  <script>
+    const btnStart = document.getElementById('btnStart');
+    const btnStop = document.getElementById('btnStop');
+    const btnGuide = document.getElementById('btnGuide');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const logBox = document.getElementById('logBox');
+    const infoCard = document.getElementById('infoCard');
+    const ipDisplay = document.getElementById('ipDisplay');
+    const waitingOverlay = document.getElementById('waitingOverlay');
+
+    let isRunning = false;
+
+    const deviceFrame = document.getElementById('deviceFrame');
+    const btnPhoneFrame = document.getElementById('btnPhoneFrame');
+    const btnIpadFrame = document.getElementById('btnIpadFrame');
+
+    function setDeviceFrame(kind) {
+      const ipad = kind === 'ipad';
+      deviceFrame.classList.toggle('ipad', ipad);
+      btnPhoneFrame.classList.toggle('active', !ipad);
+      btnIpadFrame.classList.toggle('active', ipad);
+    }
+
+    btnPhoneFrame.addEventListener('click', () => setDeviceFrame('iphone'));
+    btnIpadFrame.addEventListener('click', () => setDeviceFrame('ipad'));
+
+    function updateStatus(running, message) {
+      isRunning = running;
+      statusBadge.className = 'status-badge ' + (running ? 'running' : 'stopped');
+      statusText.textContent = message || (running ? 'Đang chạy' : 'Đã dừng');
+      btnStart.style.display = running ? 'none' : 'flex';
+      btnStop.style.display = running ? 'flex' : 'none';
+      waitingOverlay.classList.toggle('show', running);
+    }
+
+    function addLog(type, text) {
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.innerHTML = `<span class="time">${time}</span>${escapeHtml(text)}`;
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+      
+      // Keep max 200 lines
+      while (logBox.children.length > 200) {
+        logBox.removeChild(logBox.firstChild);
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    btnStart.addEventListener('click', async () => {
+      const name = document.getElementById('serverName').value || 'iPhone Mirror';
+      const noAudio = document.getElementById('noAudio').checked;
+      const fullscreen = document.getElementById('fullscreen').checked;
+      
+      btnStart.disabled = true;
+      addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
+      
+      await window.mirror.start({ name, noAudio, fullscreen });
+      
+      const ip = await window.mirror.getIP();
+      ipDisplay.textContent = ip;
+      infoCard.style.display = 'block';
+      
+      btnStart.disabled = false;
+    });
+
+    btnStop.addEventListener('click', async () => {
+      addLog('stdout', 'Đang dừng AirPlay server...');
+      await window.mirror.stop();
+      infoCard.style.display = 'none';
+    });
+
+    btnGuide.addEventListener('click', () => {
+      window.mirror.openGuide();
+    });
+
+    // Status updates from main process
+    window.mirror.onStatus((data) => {
+      updateStatus(data.running, data.message);
+      if (data.ip) {
+        ipDisplay.textContent = data.ip;
+      }
+    });
+
+    // Log updates from main process
+    window.mirror.onLog((data) => {
+      addLog(data.type, data.text);
+    });
+
+    // Init
+    updateStatus(false, 'Chưa khởi động');
+  </script>
+</body>
+</html>

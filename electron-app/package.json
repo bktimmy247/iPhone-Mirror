@@ -1,0 +1,35 @@
+{
+  "name": "iphone-mirror",
+  "version": "1.0.0",
+  "description": "iPhone Screen Mirror for PC - AirPlay Receiver",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "dev": "electron . --dev"
+  },
+  "author": "Tôm AI",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.tom.iphone-mirror",
+    "productName": "iPhone Mirror",
+    "win": {
+      "target": "portable",
+      "icon": "icon.png"
+    },
+    "files": ["**/*", "!uxplay-src/**"],
+    "extraResources": [
+      {
+        "from": "../uxplay-src/build/uxplay.exe",
+        "to": "uxplay.exe"
+      }
+    ],
+    "portable": {
+      "artifactName": "iPhoneMirror.exe"
+    }
+  }
+}
