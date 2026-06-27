@@ -28,6 +28,18 @@ Bản mới đổi sang hướng ổn định hơn:
 
 
 
+
+## Bản sửa 2026-06-27 23:40: khung iPhone kéo được
+
+Bản auto-style trước bỏ viền cửa sổ video nên không kéo được và vẫn không có cảm giác bo viền iPhone. Bản này đổi sang mô hình mới:
+
+- App tạo một cửa sổ **iPhone Frame** riêng bằng Electron, trong suốt, always-on-top, có notch/home bar và kéo được ở vùng trên notch.
+- Cửa sổ video `Direct3D11 renderer` được đặt đúng vào vùng màn hình bên trong frame.
+- Khi kéo/resize frame, app gọi styler để đưa video đi theo frame.
+- Nút **Mở/đặt lại khung iPhone kéo được** sẽ mở frame và sync lại video vào trong khung.
+
+Cách này không bo góc trực tiếp video Direct3D, nhưng tạo khung iPhone kéo được thực dụng hơn cho quay demo.
+
 ## Bản sửa 2026-06-27 23:30: bắt đúng Direct3D11 renderer
 
 Ảnh test thực tế cho thấy cửa sổ video thật có title **Direct3D11 renderer** và class **GSTD3D11**. Bản trước chỉ tìm theo PID UxPlay nên có thể không bắt đúng cửa sổ này. Bản này sửa `window-styler.ps1` để:

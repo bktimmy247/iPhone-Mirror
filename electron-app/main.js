@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn, execFile } = require('child_process');
 
 let mainWindow;
+let frameWindow = null;
 let uxplayProcess = null;
 let isRunning = false;
 let mirrorStyleTimer = null;
@@ -42,6 +43,59 @@ function createWindow() {
 }
 
 
+
+function createMirrorFrameWindow() {
+  if (frameWindow && !frameWindow.isDestroyed()) {
+    frameWindow.focus();
+    styleMirrorWindowOnce({ mirrorSize: 'frame' });
+    return;
+  }
+  frameWindow = new BrowserWindow({
+    width: 470,
+    height: 920,
+    minWidth: 360,
+    minHeight: 700,
+    title: 'iPhone Mirror Frame',
+    frame: false,
+    transparent: true,
+    resizable: true,
+    alwaysOnTop: true,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: { contextIsolation: true, nodeIntegration: false }
+  });
+  frameWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;font-family:Arial,sans-serif;}
+.shell{position:absolute;inset:8px;border:18px solid #05060a;border-radius:58px;box-shadow:0 28px 90px rgba(0,0,0,.58),inset 0 0 0 2px rgba(255,255,255,.08);background:rgba(0,0,0,.08);}
+.drag{position:absolute;left:76px;right:76px;top:8px;height:52px;-webkit-app-region:drag;z-index:4;}
+.notch{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:124px;height:32px;border-radius:0 0 20px 20px;background:#05060a;z-index:5;}
+.hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);color:rgba(255,255,255,.75);font-size:11px;background:rgba(0,0,0,.45);padding:5px 9px;border-radius:999px;white-space:nowrap;z-index:6;}
+.home{position:absolute;left:50%;bottom:35px;transform:translateX(-50%);width:120px;height:5px;border-radius:999px;background:rgba(255,255,255,.62);z-index:5;}
+</style></head><body><div class="shell"><div class="drag"></div><div class="notch"></div><div class="home"></div><div class="hint">Kéo vùng trên notch để di chuyển khung</div></div></body></html>`));
+  frameWindow.on('move', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
+  frameWindow.on('resize', () => styleMirrorWindowOnce({ mirrorSize: 'frame' }));
+  frameWindow.on('closed', () => { frameWindow = null; });
+}
+
+function getFrameVideoBounds() {
+  if (!frameWindow || frameWindow.isDestroyed()) return null;
+  const b = frameWindow.getBounds();
+  // Match the transparent iPhone shell: video lives inside the black frame,
+  // leaving room for notch/home indicator.
+  return {
+    x: b.x + 34,
+    y: b.y + 72,
+    width: Math.max(220, b.width - 68),
+    height: Math.max(360, b.height - 144)
+  };
+}
+
+function closeMirrorFrameWindow() {
+  if (frameWindow && !frameWindow.isDestroyed()) frameWindow.close();
+  frameWindow = null;
+}
+
 function sendMirrorWindowStatus(message, extra = {}) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   mainWindow.webContents.send('mirror-embed-status', {
@@ -61,6 +115,10 @@ function stopMirrorStyling() {
 }
 
 function computeMirrorPlacement(options = {}) {
+  if (options.mirrorSize === 'frame') {
+    const frameBounds = getFrameVideoBounds();
+    if (frameBounds) return frameBounds;
+  }
   const size = options.mirrorSize || 'iphone';
   const presets = {
     iphone: { width: 430, height: 860 },
@@ -101,8 +159,9 @@ function styleMirrorWindowOnce(options = {}) {
         const firstStyle = styledMirrorHwnd !== result.childHwnd;
         styledMirrorHwnd = result.childHwnd;
         sendMirrorWindowStatus('Đã tự đặt cửa sổ mirror thành kiểu màn hình iPhone', { styled: true, ...result });
+        if (frameWindow && !frameWindow.isDestroyed()) frameWindow.moveTop();
         if (firstStyle && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror kiểu iPhone: ${result.title || 'unknown'} / ${result.class || 'unknown'} (${result.width}x${result.height}).`, timestamp: Date.now() });
+          mainWindow.webContents.send('uxplay-log', { type: 'stdout', text: `Đã đặt cửa sổ mirror vào khung iPhone kéo được: ${result.title || 'unknown'} / ${result.class || 'unknown'} (${result.width}x${result.height}).`, timestamp: Date.now() });
         }
       }
     } catch (_) {
@@ -196,7 +255,8 @@ async function startUxplay(options = {}) {
 
   isRunning = true;
   styledMirrorHwnd = null;
-  startMirrorStyling(options);
+  if (options.autoStyleMirror !== false) createMirrorFrameWindow();
+  startMirrorStyling({ ...options, mirrorSize: options.autoStyleMirror === false ? 'iphone' : 'frame' });
   mainWindow.webContents.send('uxplay-log', {
     type: 'stdout',
     text: options.noAudio

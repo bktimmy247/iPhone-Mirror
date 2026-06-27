@@ -581,7 +581,7 @@
         </label>
         <label class="checkbox-item">
           <input type="checkbox" id="autoStyleMirror" checked>
-          <span>Tự đặt cửa sổ mirror thành kiểu màn hình iPhone</span>
+          <span>Mở khung iPhone kéo được và đặt video vào trong</span>
         </label>
         <label class="checkbox-item">
           <input type="checkbox" id="fullscreen">
@@ -598,7 +598,7 @@
       </button>
       
       <button class="btn btn-guide" id="btnRepositionMirror">
-        📱 Đặt lại cửa sổ mirror kiểu iPhone
+        📱 Mở/đặt lại khung iPhone kéo được
       </button>
       
       <button class="btn btn-guide" id="btnGuide">
@@ -750,7 +750,7 @@
       btnStart.disabled = true;
       addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
       
-      await window.mirror.start({ name, noAudio, fullscreen, autoStyleMirror, mirrorSize: 'iphone' });
+      await window.mirror.start({ name, noAudio, fullscreen, autoStyleMirror, mirrorSize: autoStyleMirror ? 'frame' : 'iphone' });
       
       const ip = await window.mirror.getIP();
       ipDisplay.textContent = ip;
@@ -766,8 +766,9 @@
     });
 
     btnRepositionMirror.addEventListener('click', () => {
-      window.mirror.repositionMirrorWindow({ mirrorSize: 'iphone' });
-      addLog('stdout', 'Đang đặt lại cửa sổ mirror thành kiểu màn hình iPhone...');
+      window.mirror.openMirrorFrame();
+      window.mirror.repositionMirrorWindow({ mirrorSize: 'frame' });
+      addLog('stdout', 'Đang mở/đặt lại khung iPhone kéo được và đưa video vào trong khung...');
     });
 
     btnGuide.addEventListener('click', () => {
