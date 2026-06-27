@@ -577,7 +577,11 @@
       <div class="checkbox-group">
         <label class="checkbox-item">
           <input type="checkbox" id="noAudio" checked>
-          <span>Tối ưu mirror (không đồng bộ âm thanh)</span>
+          <span>Bật âm thanh iPhone qua loa mặc định Windows</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="autoStyleMirror" checked>
+          <span>Tự đặt cửa sổ mirror thành kiểu màn hình iPhone</span>
         </label>
         <label class="checkbox-item">
           <input type="checkbox" id="fullscreen">
@@ -739,9 +743,9 @@
 
     btnStart.addEventListener('click', async () => {
       const name = document.getElementById('serverName').value || 'iPhone Mirror';
-      const noAudio = !document.getElementById('noAudio').checked;
-      const autoStyleMirror = document.getElementById('autoStyleMirror').checked;
-      const fullscreen = document.getElementById('fullscreen').checked;
+      const noAudio = !(document.getElementById('noAudio')?.checked ?? true);
+      const autoStyleMirror = document.getElementById('autoStyleMirror')?.checked ?? true;
+      const fullscreen = document.getElementById('fullscreen')?.checked ?? false;
       
       btnStart.disabled = true;
       addLog('stdout', `Đang khởi động AirPlay server "${name}"...`);
