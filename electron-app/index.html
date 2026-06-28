@@ -230,6 +230,70 @@
       background: rgba(255,255,255,0.1);
     }
     
+
+
+    /* Bluetooth HID control */
+    .hid-card {
+      margin-top: 24px;
+      padding-top: 22px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .input-group select,
+    .input-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+      min-height: 42px;
+    }
+
+    .input-group select option { color: #111; }
+
+    .hid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .hid-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+    .hid-btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.055);
+      color: #ddd;
+      border-radius: 9px;
+      padding: 9px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .hid-btn:hover { background: rgba(102,126,234,0.22); border-color: rgba(102,126,234,0.48); color:#fff; }
+    .hid-btn.primary { background: rgba(102,126,234,0.22); border-color: rgba(102,126,234,0.42); color:#fff; }
+    .hid-status {
+      margin: 10px 0 12px;
+      font-size: 12px;
+      color: #aaa;
+      line-height: 1.45;
+      min-height: 18px;
+    }
+    .hid-status.ok { color: #8ef0a4; }
+    .hid-status.err { color: #ff9b9b; }
+    .trackpad {
+      height: 118px;
+      border: 1px dashed rgba(255,255,255,0.18);
+      background: radial-gradient(circle at 50% 30%, rgba(102,126,234,0.16), rgba(255,255,255,0.035));
+      border-radius: 14px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      color:#8f91bd;
+      font-size:12px;
+      user-select:none;
+      margin-bottom:10px;
+      cursor: crosshair;
+    }
+
     /* Info card */
     .info-card {
       background: rgba(102,126,234,0.08);
@@ -605,6 +669,43 @@
         📖 Hướng dẫn cách AirPlay
       </button>
       
+
+
+      <div class="hid-card">
+        <h2>Bluetooth HID Control</h2>
+        <div class="info-card">
+          <h3>ESP32 Bridge</h3>
+          <p>PC gui lenh qua USB/Serial. ESP32 pair voi iPhone nhu Bluetooth keyboard/mouse. Ban nay khong dung EXE cu.</p>
+        </div>
+        <div class="input-group">
+          <label>Cong ESP32</label>
+          <select id="hidPortSelect"><option value="">Bam Quet cong...</option></select>
+        </div>
+        <div class="hid-row">
+          <button class="hid-btn" id="btnHidRefresh">Quet</button>
+          <button class="hid-btn primary" id="btnHidConnect">Ket noi</button>
+        </div>
+        <div class="hid-status" id="hidStatus">Chua ket noi ESP32 HID bridge.</div>
+        <div class="input-group">
+          <label>Go chu vao iPhone</label>
+          <textarea id="hidText" rows="3" placeholder="Nhap text roi bam Gui text..."></textarea>
+        </div>
+        <button class="btn btn-guide" id="btnHidSendText">Gui text</button>
+        <div class="hid-grid">
+          <button class="hid-btn" data-hid-key="ENTER">Enter</button>
+          <button class="hid-btn" data-hid-key="BACKSPACE">Backspace</button>
+          <button class="hid-btn" data-hid-key="ESC">Esc</button>
+          <button class="hid-btn" data-hid-key="TAB">Tab</button>
+          <button class="hid-btn" data-hid-key="SPACE">Space</button>
+          <button class="hid-btn" data-hid-key="HOME">Home</button>
+        </div>
+        <div class="trackpad" id="hidTrackpad">Trackpad thu nghiem<br>keo de di chuot, click de bam</div>
+        <div class="hid-row">
+          <button class="hid-btn" id="btnHidClick">Click</button>
+          <button class="hid-btn" id="btnHidScrollDown">Scroll down</button>
+        </div>
+      </div>
+
       <div class="info-card" id="infoCard" style="display:none;">
         <h3>📡 Địa chỉ IP</h3>
         <p>Học viên kết nối cùng Wi-Fi, bấm AirPlay trên iPhone và chọn:</p>
@@ -668,6 +769,16 @@
     const deviceScreen = document.getElementById('deviceScreen');
     const mirrorHost = document.getElementById('mirrorHost');
     const embedStatus = document.getElementById('embedStatus');
+
+    const hidPortSelect = document.getElementById('hidPortSelect');
+    const btnHidRefresh = document.getElementById('btnHidRefresh');
+    const btnHidConnect = document.getElementById('btnHidConnect');
+    const hidStatus = document.getElementById('hidStatus');
+    const hidText = document.getElementById('hidText');
+    const btnHidSendText = document.getElementById('btnHidSendText');
+    const hidTrackpad = document.getElementById('hidTrackpad');
+    const btnHidClick = document.getElementById('btnHidClick');
+    const btnHidScrollDown = document.getElementById('btnHidScrollDown');
 
     let isRunning = false;
 
@@ -775,6 +886,89 @@
       window.mirror.openGuide();
     });
 
+
+
+    function setHidStatus(message, kind = '') {
+      hidStatus.textContent = message;
+      hidStatus.className = 'hid-status ' + kind;
+    }
+
+    async function refreshHidPorts() {
+      try {
+        const ports = await window.mirror.hidListPorts();
+        hidPortSelect.innerHTML = '';
+        if (!ports.length) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'Khong thay cong COM nao';
+          hidPortSelect.appendChild(opt);
+          setHidStatus('Khong thay ESP32. Cam ESP32 qua USB roi bam Quet.', 'err');
+          return;
+        }
+        for (const port of ports) {
+          const opt = document.createElement('option');
+          opt.value = port.path;
+          const name = port.friendlyName || port.manufacturer || 'Serial device';
+          opt.textContent = `${port.path} -- ${name}`;
+          hidPortSelect.appendChild(opt);
+        }
+        setHidStatus(`Da tim thay ${ports.length} cong. Chon ESP32 roi bam Ket noi.`, '');
+      } catch (error) {
+        setHidStatus('Quet cong loi: ' + error.message, 'err');
+      }
+    }
+
+    async function sendHid(command) {
+      try {
+        await window.mirror.hidSend(command);
+        addLog('stdout', `HID -> ${JSON.stringify(command)}`);
+      } catch (error) {
+        setHidStatus(error.message, 'err');
+        addLog('stderr', `HID loi: ${error.message}`);
+      }
+    }
+
+    btnHidRefresh.addEventListener('click', refreshHidPorts);
+    btnHidConnect.addEventListener('click', async () => {
+      try {
+        const path = hidPortSelect.value;
+        if (!path) return setHidStatus('Anh chon cong ESP32 truoc nha.', 'err');
+        await window.mirror.hidConnect({ path, baudRate: 115200 });
+      } catch (error) {
+        setHidStatus('Ket noi loi: ' + error.message, 'err');
+      }
+    });
+    btnHidSendText.addEventListener('click', () => sendHid({ type: 'text', text: hidText.value || '' }));
+    document.querySelectorAll('[data-hid-key]').forEach((button) => {
+      button.addEventListener('click', () => sendHid({ type: 'key', key: button.dataset.hidKey }));
+    });
+    btnHidClick.addEventListener('click', () => sendHid({ type: 'mouse', action: 'click' }));
+    btnHidScrollDown.addEventListener('click', () => sendHid({ type: 'mouse', action: 'scroll', wheel: -3 }));
+
+    let lastTrack = null;
+    hidTrackpad.addEventListener('pointerdown', (event) => {
+      hidTrackpad.setPointerCapture(event.pointerId);
+      lastTrack = { x: event.clientX, y: event.clientY };
+    });
+    hidTrackpad.addEventListener('pointermove', (event) => {
+      if (!lastTrack) return;
+      const dx = Math.round(event.clientX - lastTrack.x);
+      const dy = Math.round(event.clientY - lastTrack.y);
+      if (Math.abs(dx) + Math.abs(dy) >= 4) {
+        sendHid({ type: 'mouse', action: 'move', dx, dy });
+        lastTrack = { x: event.clientX, y: event.clientY };
+      }
+    });
+    hidTrackpad.addEventListener('pointerup', (event) => {
+      if (lastTrack) sendHid({ type: 'mouse', action: 'click' });
+      lastTrack = null;
+    });
+    hidTrackpad.addEventListener('pointercancel', () => { lastTrack = null; });
+
+    window.mirror.onHidStatus((data) => {
+      setHidStatus(data.message || 'ESP32 HID bridge status changed.', data.error ? 'err' : (data.connected ? 'ok' : ''));
+    });
+
     // Status updates from main process
     window.mirror.onStatus((data) => {
       updateStatus(data.running, data.message);
@@ -797,6 +991,7 @@
     // Init
     updateStatus(false, 'Chưa khởi động');
     requestAnimationFrame(notifyMirrorHostBounds);
+    refreshHidPorts().catch(() => {});
   </script>
 </body>
 </html>

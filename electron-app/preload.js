@@ -11,4 +11,9 @@ contextBridge.exposeInMainWorld('mirror', {
   onStatus: (callback) => ipcRenderer.on('uxplay-status', (event, data) => callback(data)),
   onLog: (callback) => ipcRenderer.on('uxplay-log', (event, data) => callback(data)),
   onEmbedStatus: (callback) => ipcRenderer.on('mirror-embed-status', (event, data) => callback(data)),
+  hidListPorts: () => ipcRenderer.invoke('hid-list-ports'),
+  hidConnect: (options) => ipcRenderer.invoke('hid-connect', options),
+  hidDisconnect: () => ipcRenderer.invoke('hid-disconnect'),
+  hidSend: (command) => ipcRenderer.invoke('hid-send', command),
+  onHidStatus: (callback) => ipcRenderer.on('hid-status', (event, data) => callback(data)),
 });

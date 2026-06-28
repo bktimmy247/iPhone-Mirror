@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const { spawn, execFile } = require('child_process');
+const { SerialPort } = require('serialport');
 
 let mainWindow;
 let frameWindow = null;
@@ -8,6 +9,8 @@ let uxplayProcess = null;
 let isRunning = false;
 let mirrorStyleTimer = null;
 let styledMirrorHwnd = null;
+let hidPort = null;
+let hidPortPath = null;
 
 const UXPLAY_PATH = app.isPackaged
   ? path.join(process.resourcesPath, 'uxplay.exe')
@@ -17,6 +20,99 @@ const MSYS2_UCRT64_BIN = 'C:\\tools\\msys64\\ucrt64\\bin';
 const WINDOW_STYLER = app.isPackaged
   ? path.join(process.resourcesPath, 'window-styler.ps1')
   : path.join(__dirname, 'window-styler.ps1');
+
+function sendHidStatus(message, extra = {}) {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('hid-status', {
+    connected: !!(hidPort && hidPort.isOpen),
+    port: hidPortPath,
+    message,
+    ...extra
+  });
+}
+
+async function listHidPorts() {
+  const ports = await SerialPort.list();
+  return ports.map((port) => ({
+    path: port.path,
+    manufacturer: port.manufacturer || '',
+    friendlyName: port.friendlyName || '',
+    serialNumber: port.serialNumber || '',
+    vendorId: port.vendorId || '',
+    productId: port.productId || ''
+  }));
+}
+
+function closeHidPort() {
+  return new Promise((resolve) => {
+    if (!hidPort) {
+      hidPortPath = null;
+      sendHidStatus('ESP32 HID bridge ch?a k?t n?i.');
+      resolve({ ok: true });
+      return;
+    }
+    const current = hidPort;
+    hidPort = null;
+    hidPortPath = null;
+    if (!current.isOpen) {
+      sendHidStatus('?? ng?t ESP32 HID bridge.');
+      resolve({ ok: true });
+      return;
+    }
+    current.close(() => {
+      sendHidStatus('?? ng?t ESP32 HID bridge.');
+      resolve({ ok: true });
+    });
+  });
+}
+
+async function connectHidPort(portPath, baudRate = 115200) {
+  if (!portPath) throw new Error('Ch?a ch?n c?ng COM c?a ESP32.');
+  await closeHidPort();
+  return new Promise((resolve, reject) => {
+    const port = new SerialPort({ path: portPath, baudRate: Number(baudRate) || 115200, autoOpen: false });
+    port.open((err) => {
+      if (err) {
+        sendHidStatus(`Kh?ng m? ???c ${portPath}: ${err.message}`, { error: true });
+        reject(err);
+        return;
+      }
+      hidPort = port;
+      hidPortPath = portPath;
+      port.on('error', (error) => sendHidStatus(`L?i Serial ESP32: ${error.message}`, { error: true }));
+      port.on('close', () => {
+        if (hidPort === port) {
+          hidPort = null;
+          hidPortPath = null;
+        }
+        sendHidStatus('ESP32 HID bridge ?? ng?t.');
+      });
+      sendHidStatus(`?? k?t n?i ESP32 HID bridge t?i ${portPath}.`);
+      resolve({ ok: true, port: portPath });
+    });
+  });
+}
+
+function sendHidCommand(command) {
+  return new Promise((resolve, reject) => {
+    if (!hidPort || !hidPort.isOpen) {
+      const err = new Error('Ch?a k?t n?i ESP32 HID bridge.');
+      sendHidStatus(err.message, { error: true });
+      reject(err);
+      return;
+    }
+    const payload = JSON.stringify({ ...command, ts: Date.now() }) + '\n';
+    hidPort.write(payload, 'utf8', (err) => {
+      if (err) {
+        sendHidStatus(`G?i l?nh HID l?i: ${err.message}`, { error: true });
+        reject(err);
+        return;
+      }
+      hidPort.drain(() => resolve({ ok: true }));
+    });
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -338,6 +434,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   stopUxplay();
+  closeHidPort();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -345,6 +442,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   stopUxplay();
+  closeHidPort();
 });
 
 ipcMain.handle('start-uxplay', async (event, options) => {
@@ -366,13 +464,36 @@ ipcMain.handle('mirror-host-resized', async () => {
   return { ok: true };
 });
 
-ipcMain.handle('open-frame-overlay', () => {
-  createFrameWindow();
+ipcMain.handle('open-mirror-frame', () => {
+  createMirrorFrameWindow();
   return { ok: true };
 });
 
-ipcMain.handle('close-frame-overlay', () => {
-    return { ok: true };
+ipcMain.handle('reposition-mirror-window', (event, options = {}) => {
+  styleMirrorWindowOnce(options);
+  return { ok: true };
+});
+
+ipcMain.handle('close-mirror-frame', () => {
+  closeMirrorFrameWindow();
+  return { ok: true };
+});
+
+
+ipcMain.handle('hid-list-ports', async () => {
+  return listHidPorts();
+});
+
+ipcMain.handle('hid-connect', async (event, options = {}) => {
+  return connectHidPort(options.path, options.baudRate || 115200);
+});
+
+ipcMain.handle('hid-disconnect', async () => {
+  return closeHidPort();
+});
+
+ipcMain.handle('hid-send', async (event, command) => {
+  return sendHidCommand(command || {});
 });
 
 ipcMain.handle('open-airplay-guide', () => {
