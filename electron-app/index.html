@@ -675,7 +675,7 @@
         <h2>Bluetooth HID Control</h2>
         <div class="info-card">
           <h3>ESP32 Bridge</h3>
-          <p>PC gui lenh qua USB/Serial. ESP32 pair voi iPhone nhu Bluetooth keyboard/mouse. Ban nay khong dung EXE cu.</p>
+          <p>Can ESP32 da flash firmware va pair Bluetooth voi iPhone. Neu chua co ESP32, cac nut dieu khien se khong tac dung.</p>
         </div>
         <div class="input-group">
           <label>Cong ESP32</label>
@@ -685,7 +685,7 @@
           <button class="hid-btn" id="btnHidRefresh">Quet</button>
           <button class="hid-btn primary" id="btnHidConnect">Ket noi</button>
         </div>
-        <div class="hid-status" id="hidStatus">Chua ket noi ESP32 HID bridge.</div>
+        <div class="hid-status" id="hidStatus">Chua ket noi ESP32 HID bridge. Control can phan cung ESP32.</div>
         <div class="input-group">
           <label>Go chu vao iPhone</label>
           <textarea id="hidText" rows="3" placeholder="Nhap text roi bam Gui text..."></textarea>
@@ -888,6 +888,18 @@
 
 
 
+    function setHidControlsEnabled(enabled) {
+      [btnHidSendText, btnHidClick, btnHidScrollDown, hidText, hidTrackpad, ...document.querySelectorAll('[data-hid-key]')].forEach((el) => {
+        if (!el) return;
+        if (el === hidTrackpad) {
+          el.style.opacity = enabled ? '1' : '.45';
+          el.style.pointerEvents = enabled ? 'auto' : 'none';
+        } else {
+          el.disabled = !enabled;
+        }
+      });
+    }
+
     function setHidStatus(message, kind = '') {
       hidStatus.textContent = message;
       hidStatus.className = 'hid-status ' + kind;
@@ -946,26 +958,31 @@
     btnHidScrollDown.addEventListener('click', () => sendHid({ type: 'mouse', action: 'scroll', wheel: -3 }));
 
     let lastTrack = null;
+    let didDragTrackpad = false;
     hidTrackpad.addEventListener('pointerdown', (event) => {
       hidTrackpad.setPointerCapture(event.pointerId);
       lastTrack = { x: event.clientX, y: event.clientY };
+      didDragTrackpad = false;
     });
     hidTrackpad.addEventListener('pointermove', (event) => {
       if (!lastTrack) return;
       const dx = Math.round(event.clientX - lastTrack.x);
       const dy = Math.round(event.clientY - lastTrack.y);
       if (Math.abs(dx) + Math.abs(dy) >= 4) {
+        didDragTrackpad = true;
         sendHid({ type: 'mouse', action: 'move', dx, dy });
         lastTrack = { x: event.clientX, y: event.clientY };
       }
     });
     hidTrackpad.addEventListener('pointerup', (event) => {
-      if (lastTrack) sendHid({ type: 'mouse', action: 'click' });
+      if (lastTrack && !didDragTrackpad) sendHid({ type: 'mouse', action: 'click' });
       lastTrack = null;
+      didDragTrackpad = false;
     });
     hidTrackpad.addEventListener('pointercancel', () => { lastTrack = null; });
 
     window.mirror.onHidStatus((data) => {
+      setHidControlsEnabled(!!data.connected);
       setHidStatus(data.message || 'ESP32 HID bridge status changed.', data.error ? 'err' : (data.connected ? 'ok' : ''));
     });
 
@@ -991,6 +1008,7 @@
     // Init
     updateStatus(false, 'Chưa khởi động');
     requestAnimationFrame(notifyMirrorHostBounds);
+    setHidControlsEnabled(false);
     refreshHidPorts().catch(() => {});
   </script>
 </body>

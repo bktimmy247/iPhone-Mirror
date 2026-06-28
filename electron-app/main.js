@@ -272,7 +272,9 @@ function startMirrorStyling(options = {}) {
   stopMirrorStyling();
   sendMirrorWindowStatus('Khi iPhone kết nối, app sẽ thử đặt video vào khung iPhone. Nếu lệch, bấm nút đặt lại.', { styled: false });
   let attempts = 0;
-  const maxAttempts = 8;
+  // iPhone/AirPlay can take a while to create the native Direct3D window.
+  // Keep snapping longer so the mirror does not stay as a loose popup.
+  const maxAttempts = 45;
   const run = () => {
     attempts += 1;
     styleMirrorWindowOnce(options);
@@ -281,8 +283,8 @@ function startMirrorStyling(options = {}) {
       mirrorStyleTimer = null;
     }
   };
-  mirrorStyleTimer = setInterval(run, 1500);
-  setTimeout(run, 500);
+  mirrorStyleTimer = setInterval(run, 1000);
+  setTimeout(run, 300);
 }
 
 function killStaleUxplayProcesses() {

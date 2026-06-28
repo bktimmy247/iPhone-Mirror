@@ -1,6 +1,6 @@
 {
   "name": "iphone-mirror",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "iPhone Screen Mirror for PC - AirPlay Receiver",
   "main": "main.js",
   "scripts": {
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.tom.iphone-mirror",
-    "productName": "iPhone Mirror HID",
+    "productName": "iPhone Mirror HID Fix",
     "win": {
       "target": "portable",
       "icon": "icon.png"
@@ -39,10 +39,10 @@
       }
     ],
     "portable": {
-      "artifactName": "iPhoneMirror-HID-Control.exe"
+      "artifactName": "iPhoneMirror-HID-Control-Fix.exe"
     },
     "directories": {
-      "output": "dist-hid-control"
+      "output": "dist-hid-control-fix"
     }
   },
   "dependencies": {
